@@ -69,3 +69,93 @@ function verificarEntornoIOS() {
 }
 
 verificarEntornoIOS();
+
+// 5. Control de la cámara
+let streamActual = null;
+let modoCamaraActual = 'environment'; // 'environment' = trasera | 'user' = frontal
+
+function actualizarBotonesCamara(activa) {
+  btnAlternarCamara.disabled = !activa;
+  btnApagarCamara.disabled = !activa;
+  btnPrepararCamara.disabled = activa;
+}
+
+// Libera el sensor: sin esto el móvil no deja abrir la otra cámara
+function detenerCamaraActiva() {
+  if (streamActual) {
+    streamActual.getTracks().forEach((track) => {
+      track.stop();
+    });
+    streamActual = null;
+  }
+}
+
+function iniciarCamara(modo) {
+  detenerCamaraActiva();
+
+  // getUserMedia solo existe en contexto seguro (HTTPS o localhost)
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    actualizarMensajeEstado('Este navegador no permite usar la cámara aquí. Abre la app desde HTTPS.');
+    return Promise.resolve();
+  }
+
+  const restricciones = {
+    video: { facingMode: modo },
+    audio: false
+  };
+
+  actualizarMensajeEstado('Encendiendo cámara...');
+  btnAlternarCamara.disabled = true;
+
+  return navigator.mediaDevices.getUserMedia(restricciones)
+    .then((stream) => {
+      streamActual = stream;
+      visorVideo.srcObject = stream;
+      visorVideo.classList.toggle('espejo', modo === 'user');
+      actualizarMensajeEstado(`Cámara activa (${modo === 'environment' ? 'Trasera' : 'Frontal'})`);
+    })
+    .catch((error) => {
+      if (error.name === 'NotAllowedError') {
+        actualizarMensajeEstado('Permiso denegado. Habilita el acceso a la cámara en los ajustes de tu navegador.');
+      } else if (error.name === 'NotFoundError') {
+        actualizarMensajeEstado('No se detectó el sensor de cámara solicitado en este dispositivo.');
+      } else {
+        actualizarMensajeEstado(`Error al acceder al hardware: ${error.message}`);
+      }
+    })
+    .finally(() => {
+      actualizarBotonesCamara(streamActual !== null);
+    });
+}
+
+// 6. Pre-permiso (UX ética)
+// Paso 1: "Solicitar Acceso a Cámara" solo muestra el aviso explicativo
+btnPrepararCamara.addEventListener('click', () => {
+  avisoPermiso.hidden = false;
+  avisoPermiso.scrollIntoView({ behavior: 'smooth' });
+});
+
+// Paso 2: el usuario leyó el motivo y confirma -> ahora sí el diálogo nativo
+btnConfirmarPermiso.addEventListener('click', () => {
+  avisoPermiso.hidden = true;
+  iniciarCamara(modoCamaraActual);
+});
+
+btnCancelarPermiso.addEventListener('click', () => {
+  avisoPermiso.hidden = true;
+  actualizarMensajeEstado('No se encendió la cámara. Puedes solicitarla cuando quieras.');
+});
+
+// 7. Alternar entre cámara trasera y frontal
+btnAlternarCamara.addEventListener('click', () => {
+  modoCamaraActual = modoCamaraActual === 'environment' ? 'user' : 'environment';
+  iniciarCamara(modoCamaraActual);
+});
+
+// 8. Apagar la cámara
+btnApagarCamara.addEventListener('click', () => {
+  detenerCamaraActiva();
+  visorVideo.srcObject = null;
+  actualizarBotonesCamara(false);
+  actualizarMensajeEstado('Cámara apagada. El sensor quedó liberado.');
+});
