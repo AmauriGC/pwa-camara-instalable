@@ -54,3 +54,18 @@ window.addEventListener('appinstalled', () => {
   btnInstalar.hidden = true;
   console.log('[PWA] Aplicación instalada');
 });
+
+// 4. iOS: no existe beforeinstallprompt, se guía la instalación manual
+function verificarEntornoIOS() {
+  const esIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const estaInstalada = window.navigator.standalone === true ||
+                        window.matchMedia('(display-mode: standalone)').matches;
+
+  // Si está en iPhone y aún la ve desde el navegador, mostrar instrucciones manuales
+  if (esIOS && !estaInstalada) {
+    const guiaIOS = document.getElementById('instrucciones-ios');
+    if (guiaIOS) guiaIOS.hidden = false;
+  }
+}
+
+verificarEntornoIOS();
