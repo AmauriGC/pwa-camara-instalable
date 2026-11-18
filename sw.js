@@ -1,6 +1,6 @@
 // sw.js - Service Worker con estrategia Cache First
 
-const CACHE_STATIC_NAME = 'static-camara-v1';
+const CACHE_STATIC_NAME = 'static-camara-v2';
 const STATIC_FILES = [
   './',
   './index.html',
